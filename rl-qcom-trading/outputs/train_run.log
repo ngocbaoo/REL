@@ -1,0 +1,15 @@
+Train-core: 1956 rows, Validation: 131 rows
+Using device: cuda
+[ep 0] step 1928: new best val total_assets=1207.57 -> saved outputs/checkpoints\best.pt
+[ep 0] step 1928/200000 reward=0.2513 assets=1071.68 eps=0.982
+[ep 10] step 21208/200000 reward=0.3642 assets=1152.74 eps=0.799
+[ep 20] step 40488/200000 reward=0.4798 assets=1185.17 eps=0.615
+[ep 30] step 59768/200000 reward=0.5795 assets=1371.47 eps=0.432
+[ep 40] step 79048/200000 reward=0.8766 assets=1945.80 eps=0.249
+[ep 50] step 98328/200000 reward=1.0992 assets=2304.61 eps=0.066
+[ep 60] step 117608/200000 reward=1.5096 assets=3453.51 eps=0.050
+[ep 70] step 136888/200000 reward=1.5330 assets=3484.99 eps=0.050
+[ep 80] step 156168/200000 reward=1.0732 assets=2487.12 eps=0.050
+[ep 90] step 175448/200000 reward=1.6671 assets=4162.76 eps=0.050
+[ep 100] step 194728/200000 reward=1.8164 assets=4881.51 eps=0.050
+Saved final checkpoint to outputs/checkpoints\final.pt

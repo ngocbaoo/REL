@@ -1,0 +1,9 @@
+numpy>=1.24
+pandas>=2.0
+torch>=2.1
+gymnasium>=0.29
+yfinance>=0.2.40
+tensorboard>=2.15
+pyyaml>=6.0
+tqdm>=4.66
+matplotlib>=3.7

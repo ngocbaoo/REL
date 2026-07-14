@@ -1,0 +1,56 @@
+# ============================================================
+# REL301m — QCOM RL Trading Agent config
+# Student: Ta Bao Ngoc (HE191387) — Assigned stock: QCOM
+# ============================================================
+
+data:
+  train_csv: data/qcom_train.csv
+  test_csv: data/qcom_test.csv
+
+env:
+  lookback_window: 10
+  total_assets_initial: 1000.0        # TOTAL_ASSETS_INITIAL
+  b_min: 0.27                          # B_MIN
+  b_max: 0.62                          # B_MAX
+  sell_min: 0.08                       # SELL_MIN
+  sell_max: 0.88                       # SELL_MAX
+  transaction_fee: 0.03                # TRANSACTION_FEE
+  transaction_session: 32              # TRANSACTION_SESSION (cooldown steps)
+  transaction_penalty: 2567.0          # TRANSACTION_PENALTY (USD, used for reward shaping only)
+  bankruptcy_frac: 0.10                # terminate if total_assets <= this * initial
+  price_mode: close                    # close | avg_close_high | prev_day_high
+  use_soft_cooldown_penalty: false      # ablation flag, off by default
+  idle_penalty_enabled: true
+  idle_penalty_value: -0.0005
+  idle_penalty_multiplier: 2            # idle penalty triggers after 2x cooldown steps
+  episode_length: null                  # null = one long episode over full dataset; else e.g. 252
+  random_start: true                    # only used when episode_length is set (training)
+
+agent:
+  gamma: 0.99
+  lr: 0.0001
+  batch_size: 64
+  buffer_size: 100000
+  hidden_sizes: [256, 256]
+  target_update_freq: 1000              # hard update every N gradient steps (used if tau is null)
+  tau: null                             # if set (e.g. 0.005), use soft update instead
+  epsilon_start: 1.0
+  epsilon_end: 0.05
+  epsilon_decay_steps: 100000
+  per_alpha: 0.6
+  per_beta_start: 0.4
+  per_beta_end: 1.0
+  per_beta_anneal_steps: 200000
+  per_epsilon: 0.000001
+  grad_clip_norm: 10.0
+  train_start_steps: 1000               # warmup steps before learning starts
+  train_freq: 1                         # gradient step every N env steps
+
+train:
+  total_timesteps: 200000
+  seed: 42
+  eval_freq_episodes: 10
+  validation_months: 6                  # last N months of train set used as validation slice
+  log_dir: outputs/logs
+  checkpoint_dir: outputs/checkpoints
+  device: auto                          # auto | cpu | cuda
