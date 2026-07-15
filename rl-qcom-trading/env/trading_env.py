@@ -21,21 +21,29 @@ N_MARKET_FEATURES = 9
 N_PORTFOLIO_FEATURES = 5
 
 
-def _rsi(close: pd.Series, period: int = 14) -> pd.Series:
-    delta = close.diff()
-    gain = delta.clip(lower=0.0)
-    loss = -delta.clip(upper=0.0)
+def _rsi(close: pd.Series, period: int = 14) -> pd.Series: 
+    """
+    Đo mức độ thay đổi của giá trong 14 ngày
+    Trả về series cùng độ dài với close giá trị trong [0, 100]
+    """
+    delta = close.diff() 
+    gain = delta.clip(lower=0.0) # Giữ ngày tăng giá
+    loss = -delta.clip(upper=0.0) # Giữ ngày giảm giá
     avg_gain = gain.rolling(period, min_periods=period).mean()
     avg_loss = loss.rolling(period, min_periods=period).mean()
-    rs = avg_gain / avg_loss.replace(0.0, np.nan)
+    rs = avg_gain / avg_loss.replace(0.0, np.nan) 
     rsi = 100.0 - (100.0 / (1.0 + rs))
     rsi = rsi.fillna(50.0)  # no movement -> neutral RSI
     return rsi
 
 
 def _macd_hist(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> pd.Series:
-    ema_fast = close.ewm(span=fast, adjust=False).mean()
-    ema_slow = close.ewm(span=slow, adjust=False).mean()
+    """
+    Đo lường xu hướng và động lượng của giá
+    Trả về MACD histogram
+    """
+    ema_fast = close.ewm(span=fast, adjust=False).mean() # Chu kì 12
+    ema_slow = close.ewm(span=slow, adjust=False).mean() # Chu kì 26
     macd = ema_fast - ema_slow
     signal_line = macd.ewm(span=signal, adjust=False).mean()
     return macd - signal_line
@@ -50,23 +58,23 @@ def compute_market_features(df: pd.DataFrame) -> np.ndarray:
     """
     o, h, l, c, v = df["Open"], df["High"], df["Low"], df["Close"], df["Volume"]
 
-    log_ret_open = np.log(o / o.shift(1))
-    log_ret_high = np.log(h / h.shift(1))
-    log_ret_low = np.log(l / l.shift(1))
-    log_ret_close = np.log(c / c.shift(1))
+    log_ret_open = np.log(o / o.shift(1)) # Biến động giá mở cửa so với hôm trước
+    log_ret_high = np.log(h / h.shift(1)) # Biến động giá cao nhất
+    log_ret_low = np.log(l / l.shift(1))  # Biến động giá thấp nhất
+    log_ret_close = np.log(c / c.shift(1)) # Biến động giá đóng cửa
 
     vol_mean = v.rolling(20, min_periods=20).mean()
     vol_std = v.rolling(20, min_periods=20).std()
-    vol_zscore = (v - vol_mean) / vol_std.replace(0.0, np.nan)
+    vol_zscore = (v - vol_mean) / vol_std.replace(0.0, np.nan) # Khối lượng giao dịch hôm nay bất thường cỡ nào so với 20 ngày gần đây
 
-    sma10 = c.rolling(10, min_periods=10).mean()
-    sma20 = c.rolling(20, min_periods=20).mean()
+    sma10 = c.rolling(10, min_periods=10).mean() # Giá đang cao/thấp hơn bao nhiêu % so với đường trung bình ngắn hạn
+    sma20 = c.rolling(20, min_periods=20).mean() 
     sma10_norm = (c - sma10) / sma10
     sma20_norm = (c - sma20) / sma20
 
-    rsi_scaled = _rsi(c, 14) / 100.0
+    rsi_scaled = _rsi(c, 14) / 100.0 # Chỉ báo quá mua/bán 
 
-    macd_hist_norm = _macd_hist(c) / c
+    macd_hist_norm = _macd_hist(c) / c # Động lượng xu hướng chuẩn hóa theo giá
 
     feats = pd.concat(
         [
@@ -92,23 +100,23 @@ class QcomTradingEnv(gym.Env):
     def __init__(
         self,
         df: pd.DataFrame,
-        lookback_window: int = 10,
-        total_assets_initial: float = 1000.0,
-        b_min: float = 0.27,
-        b_max: float = 0.62,
-        sell_min: float = 0.08,
+        lookback_window: int = 10, # Số ngày lịch sử đưa vào obs
+        total_assets_initial: float = 1000.0, # Vốn khởi điểm mỗi episode
+        b_min: float = 0.27, # Cận dưới/trên tỉ lệ tiền dùng để mua
+        b_max: float = 0.62, 
+        sell_min: float = 0.08, # Cận dưới/trên tỉ lệ cổ phiếu dùng để bán
         sell_max: float = 0.88,
-        transaction_fee: float = 0.03,
-        transaction_session: int = 32,
-        transaction_penalty: float = 2567.0,
-        bankruptcy_frac: float = 0.10,
-        price_mode: str = "close",
-        use_soft_cooldown_penalty: bool = False,
-        idle_penalty_enabled: bool = True,
-        idle_penalty_value: float = -0.0005,
+        transaction_fee: float = 0.03, # Phí giao dịch mỗi lệnh
+        transaction_session: int = 32, # Số bước cooldown giữa 2 lệnh
+        transaction_penalty: float = 2567.0, # Hệ số phạt cooldown-violation
+        bankruptcy_frac: float = 0.10, # Ngưỡng tài sản coi là phá sản
+        price_mode: str = "close", # Cách tính giá thực thi lệnh
+        use_soft_cooldown_penalty: bool = False, # Bật/tắt phạt reward khi agent cố trade lúc cooldown
+        idle_penalty_enabled: bool = True, # Bật/tắt phạt khi HOLD quá lâu
+        idle_penalty_value: float = -0.0005, # Độ lớn phạt mỗi bước idle vượt ngưỡng
         idle_penalty_multiplier: int = 2,
-        episode_length: int | None = None,
-        random_start: bool = True,
+        episode_length: int | None = None, # Độ dài 1 episode
+        random_start: bool = True, # Có random điểm bắt đầu episode hay không
         seed: int | None = None,
     ):
         super().__init__()
@@ -169,39 +177,52 @@ class QcomTradingEnv(gym.Env):
         self.prev_total_assets = total_assets_initial
         self.steps_since_last_trade = self.transaction_session
 
-    def _execution_price(self, t: int) -> float:
-        if self.price_mode == "close":
+    def _execution_price(self, t: int) -> float: # t: chỉ số ngày hiện tại
+        """
+        Quyết định: nếu agent ra lệnh BUY/SELL hôm nay, thì giá khớp lệnh là bao nhiêu
+        """
+        if self.price_mode == "close": # giả định lệnh khớp đúng giá đóng cửa ngày t
             return float(self.close[t])
-        elif self.price_mode == "avg_close_high":
+        elif self.price_mode == "avg_close_high": # giả định khớp giá hơi kém thuận lợi hơn 1 chút so với việc luôn mua ở đúng đáy
             return float((self.close[t] + self.high[t]) / 2.0)
-        elif self.price_mode == "prev_day_high":
+        elif self.price_mode == "prev_day_high": #  giả định giá bất lợi cho bên mua
             prev_t = max(t - 1, 0)
             return float(self.high[prev_t])
         else:
             raise ValueError(f"Unknown price_mode: {self.price_mode}")
 
     def action_mask(self) -> np.ndarray:
-        """Boolean mask of shape (11,) — True = action is currently valid/executable."""
-        mask = np.ones(N_ACTIONS, dtype=bool)
+        """
+        Boolean mask of shape (11,) — True = action is currently valid/executable. 
+        Dùng để truyền cho agent bước tiếp theo
+        """
+        mask = np.ones(N_ACTIONS, dtype=bool) # mặc định mọi action đều hợp lệ
         in_cooldown = self.steps_since_last_trade < self.transaction_session
-        if in_cooldown:
+        if in_cooldown: 
             for a in BUY_ACTIONS + SELL_ACTIONS:
                 mask[a] = False
-        if self.cash <= 0:
+        if self.cash <= 0: # Điều kiện hết cash
             for a in BUY_ACTIONS:
                 mask[a] = False
-        if self.holdings <= 0:
+        if self.holdings <= 0: # Điều kiện hết HOLD
             for a in SELL_ACTIONS:
                 mask[a] = False
         return mask
 
     def _apply_mask(self, action: int) -> int:
+        """
+        đảm bảo dù agent gửi action bậy bạ,
+        env vẫn tự sửa đúng, không bao giờ thực thi 1 giao dịch trái luật.
+        """
         mask = self.action_mask()
         if not mask[action]:
             return HOLD
         return action
 
     def _get_obs(self) -> np.ndarray:
+        """
+        dịch trạng thái nội bộ để mạng neural có thể thấy
+        """
         start = self.t - self.lookback_window + 1
         window = self.market_features[start : self.t + 1]  # (lookback, 9)
         market_flat = window.flatten().astype(np.float32)
@@ -224,6 +245,9 @@ class QcomTradingEnv(gym.Env):
         return np.concatenate([market_flat, portfolio])
 
     def reset(self, *, seed: int | None = None, options: dict | None = None):
+        """
+        Khởi động lại ván chơi
+        """
         super().reset(seed=seed)
         if seed is not None:
             self._np_random = np.random.default_rng(seed)
@@ -262,6 +286,7 @@ class QcomTradingEnv(gym.Env):
         return obs, info
 
     def step(self, action: int):
+        # Xác định giá và action thực tế
         action_raw = int(action)
         price = self._execution_price(self.t)
 
@@ -270,25 +295,29 @@ class QcomTradingEnv(gym.Env):
         cooldown_violation = (
             action_raw in (BUY_ACTIONS + SELL_ACTIONS)
             and self.steps_since_last_trade < self.transaction_session
-        )
+        ) # Ghi lại log
 
+        # Thực thi giao dịch
         traded = False
+        # Trường hợp BUY
         if action_taken in BUY_ACTIONS:
             ratio = self.buy_ratios[action_taken - 1]
             spend = ratio * self.cash
-            shares_bought = (spend * (1 - self.transaction_fee)) / price
+            shares_bought = (spend * (1 - self.transaction_fee)) / price # Số cổ phiếu mua được
             new_holdings = self.holdings + shares_bought
-            if new_holdings > 0:
+            if new_holdings > 0: # Giá vốn bình quân (để biết được đang lời hay lỗ)
                 self.avg_cost_basis = (
                     self.avg_cost_basis * self.holdings + spend
                 ) / new_holdings
             self.cash -= spend
             self.holdings = new_holdings
             traded = True
+            
+        # Trường hợp SELL
         elif action_taken in SELL_ACTIONS:
             ratio = self.sell_ratios[action_taken - 6]
-            shares_sold = ratio * self.holdings
-            proceeds = shares_sold * price * (1 - self.transaction_fee)
+            shares_sold = ratio * self.holdings # Số cổ phiếu sẽ bán
+            proceeds = shares_sold * price * (1 - self.transaction_fee) 
             self.cash += proceeds
             self.holdings -= shares_sold
             if self.holdings <= 1e-12:
@@ -296,19 +325,21 @@ class QcomTradingEnv(gym.Env):
                 self.avg_cost_basis = 0.0
             traded = True
 
+        # Cập nhật cooldown counter
         if traded:
             self.steps_since_last_trade = 0
         else:
             self.steps_since_last_trade += 1
 
-        self.total_assets = self.cash + self.holdings * price
+        # Tính reward
+        self.total_assets = self.cash + self.holdings * price # Toàn bộ tài sản
 
-        reward = (self.total_assets - self.prev_total_assets) / self.prev_total_assets
+        reward = (self.total_assets - self.prev_total_assets) / self.prev_total_assets # % thay đổi tài sản
 
-        if self.use_soft_cooldown_penalty and cooldown_violation:
+        if self.use_soft_cooldown_penalty and cooldown_violation: # phạt khi thực hiện BUY/SELL khi cooldown
             reward -= (self.transaction_penalty / 1000.0) * 0.001
 
-        idle_threshold = self.idle_penalty_multiplier * self.transaction_session
+        idle_threshold = self.idle_penalty_multiplier * self.transaction_session # phạt khi agent ko làm j quá lâu
         if (
             self.idle_penalty_enabled
             and action_taken == HOLD
@@ -316,6 +347,7 @@ class QcomTradingEnv(gym.Env):
         ):
             reward += self.idle_penalty_value
 
+        # Kiểm tra kết thúc episode
         terminated = self.total_assets <= self.bankruptcy_frac * self.total_assets_initial
         if terminated:
             reward += -1.0
@@ -326,6 +358,7 @@ class QcomTradingEnv(gym.Env):
         if not terminated and not truncated:
             self.t += 1
 
+        # Trả kết quả
         obs = self._get_obs()
         info = {
             "total_assets": self.total_assets,

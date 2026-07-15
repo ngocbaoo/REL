@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from agent.networks import DuelingQNetwork
 from agent.replay_buffer import PrioritizedReplayBuffer
 
-NEG_INF = -1e8
+NEG_INF = -1e8 # Vô hiệu hóa Q-value bị mask
 
 
 class DQNAgent:
@@ -73,43 +73,60 @@ class DQNAgent:
         self.env_step = 0
 
     def epsilon_at(self, step: int) -> float:
+        """
+        Kiểm soát exploration vs exploitation (nội suy tuyến tính)
+        """
         frac = min(1.0, step / max(1, self.epsilon_decay_steps))
         return self.epsilon_start + frac * (self.epsilon_end - self.epsilon_start)
 
     @torch.no_grad()
     def _masked_greedy_action(self, net: nn.Module, obs: np.ndarray, mask: np.ndarray) -> int:
+        """
+        Chọn action tốt nhất trong số action đc phép.
+        Trả về action có Q-value cao nhất trong số còn lại
+        """
         obs_t = torch.as_tensor(obs, dtype=torch.float32, device=self.device).unsqueeze(0)
-        q = net(obs_t).squeeze(0).cpu().numpy()
+        q = net(obs_t).squeeze(0).cpu().numpy() # Dự đoán
         q = np.where(mask, q, NEG_INF)
         return int(np.argmax(q))
 
     def select_action(self, obs: np.ndarray, mask: np.ndarray, epsilon: float | None = None, greedy: bool = False) -> int:
-        valid_actions = np.flatnonzero(mask)
+        """
+        Quyết định khi nào nên exploration hay exploitation
+        """
+        valid_actions = np.flatnonzero(mask) # Trả về mảng chỉ số mask khác 0
         if valid_actions.size == 0:
             return 0  # HOLD is always a fallback; masking guarantees index 0 valid in practice
 
-        if not greedy:
+        if not greedy: # Nếu explore
             eps = self.epsilon_at(self.env_step) if epsilon is None else epsilon
             if self.rng.random() < eps:
                 return int(self.rng.choice(valid_actions))
 
-        return self._masked_greedy_action(self.online_net, obs, mask)
+        return self._masked_greedy_action(self.online_net, obs, mask) # Nếu exploit
 
     def store(self, obs, action, reward, next_obs, done, next_mask):
+        """
+        Lưu lại kinh nghiệm vào buffer
+        """
         self.buffer.add(obs, action, reward, next_obs, done, next_mask)
         self.env_step += 1
 
     def _soft_update(self):
+        """
+        Làm mới target_net dựa trên online_net
+        """
         with torch.no_grad():
             for target_p, online_p in zip(self.target_net.parameters(), self.online_net.parameters()):
                 target_p.data.mul_(1 - self.tau).add_(self.tau * online_p.data)
 
     def learn(self) -> float | None:
-        if len(self.buffer) < self.batch_size:
+        if len(self.buffer) < self.batch_size: # Nếu chưa đủ batch_size thì không thể học
             return None
 
-        batch = self.buffer.sample(self.batch_size, self.learn_step)
+        batch = self.buffer.sample(self.batch_size, self.learn_step) # batch là 1 dict chứa obs, actions, rewards, next_obs, dones, next_masks, weights, tree_idx
 
+        # Chuyển từng mảng sang tensor Pytorch
         obs = torch.as_tensor(batch["obs"], dtype=torch.float32, device=self.device)
         actions = torch.as_tensor(batch["actions"], dtype=torch.int64, device=self.device)
         rewards = torch.as_tensor(batch["rewards"], dtype=torch.float32, device=self.device)
@@ -118,26 +135,30 @@ class DQNAgent:
         next_masks = torch.as_tensor(batch["next_masks"], dtype=torch.bool, device=self.device)
         weights = torch.as_tensor(batch["weights"], dtype=torch.float32, device=self.device)
 
+        # Dự đoán hiện tại
         q_values = self.online_net(obs).gather(1, actions.unsqueeze(1)).squeeze(1)
 
+        # Double DQN
         with torch.no_grad():
-            next_q_online = self.online_net(next_obs)
-            next_q_online_masked = next_q_online.masked_fill(~next_masks, NEG_INF)
-            next_actions = next_q_online_masked.argmax(dim=1, keepdim=True)
+            next_q_online = self.online_net(next_obs) # Tính s' bằng mạng đang học
+            next_q_online_masked = next_q_online.masked_fill(~next_masks, NEG_INF) # Đảo ngược mask và ghi NEG_INF vào các vị trí ko hợp lệ tại s'
+            next_actions = next_q_online_masked.argmax(dim=1, keepdim=True) # Chọn action
 
-            next_q_target = self.target_net(next_obs)
-            next_q_selected = next_q_target.gather(1, next_actions).squeeze(1)
+            next_q_target = self.target_net(next_obs) # Tính s' bằng mạng target
+            next_q_selected = next_q_target.gather(1, next_actions).squeeze(1) # Đánh giá 
 
-            td_target = rewards + self.gamma * (1 - dones) * next_q_selected
+            td_target = rewards + self.gamma * (1 - dones) * next_q_selected # Công thức Bellman
 
-        td_errors = td_target - q_values
-        loss = (weights * F.smooth_l1_loss(q_values, td_target, reduction="none")).mean()
+        td_errors = td_target - q_values # Chênh lệch giữa mong muốn và predict
+        loss = (weights * F.smooth_l1_loss(q_values, td_target, reduction="none")).mean() # Huber loss
 
+        # Backward prop
         self.optimizer.zero_grad()
         loss.backward()
         nn.utils.clip_grad_norm_(self.online_net.parameters(), self.grad_clip_norm)
         self.optimizer.step()
 
+        # Ghi lại TD-error vào buffer
         self.buffer.update_priorities(batch["tree_idxs"], td_errors.detach().cpu().numpy())
 
         self.learn_step += 1
