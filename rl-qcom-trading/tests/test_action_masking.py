@@ -1,5 +1,3 @@
-"""Unit test: agent must never execute BUY/SELL within TRANSACTION_SESSION
-steps of the previous executed trade, whether acting randomly or greedily."""
 import os
 import sys
 
@@ -8,8 +6,8 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from env.trading_env import QcomTradingEnv, BUY_ACTIONS, SELL_ACTIONS
-from agent.dqn_agent import DQNAgent
+from env.trading_env import QcomTradingEnv, HOLD, BUY_ACTIONS, SELL_ACTIONS
+from agent.a2c_agent import A2CAgent
 
 
 def _make_df(n=400, seed=0):
@@ -30,54 +28,6 @@ def _make_df(n=400, seed=0):
     return df
 
 
-def test_random_actions_respect_cooldown():
-    df = _make_df()
-    env = QcomTradingEnv(df, episode_length=None, seed=1)
-    obs, info = env.reset(seed=1)
-
-    rng = np.random.default_rng(2)
-    last_trade_step = -10_000
-    step = 0
-    done = False
-    while not done:
-        action = int(rng.integers(0, 11))
-        obs, reward, terminated, truncated, info = env.step(action)
-        done = terminated or truncated
-
-        if info["action_taken"] in (BUY_ACTIONS + SELL_ACTIONS):
-            assert step - last_trade_step >= env.transaction_session, (
-                f"Trade executed at step {step}, only {step - last_trade_step} "
-                f"steps after previous trade at {last_trade_step} (< {env.transaction_session})"
-            )
-            last_trade_step = step
-        step += 1
-
-
-def test_greedy_agent_respects_cooldown():
-    df = _make_df()
-    env = QcomTradingEnv(df, episode_length=None, seed=3)
-    obs, info = env.reset(seed=3)
-
-    agent = DQNAgent(obs_dim=env.observation_space.shape[0], n_actions=11, seed=3)
-
-    last_trade_step = -10_000
-    step = 0
-    done = False
-    while not done:
-        mask = info["action_mask"]
-        assert mask[0], "HOLD must always be a valid action"
-        action = agent.select_action(obs, mask, greedy=True)
-        assert mask[action], "Selected action must be valid under the mask"
-
-        obs, reward, terminated, truncated, info = env.step(action)
-        done = terminated or truncated
-
-        if info["action_taken"] in (BUY_ACTIONS + SELL_ACTIONS):
-            assert step - last_trade_step >= env.transaction_session
-            last_trade_step = step
-        step += 1
-
-
 def test_action_mask_blocks_buy_without_cash_and_sell_without_holdings():
     df = _make_df()
     env = QcomTradingEnv(df, episode_length=None, seed=5)
@@ -93,8 +43,58 @@ def test_action_mask_blocks_buy_without_cash_and_sell_without_holdings():
     assert not mask[list(SELL_ACTIONS)].any()
 
 
+def test_no_cooldown_restriction_on_consecutive_trades():
+    df = _make_df()
+    env = QcomTradingEnv(df, episode_length=None, seed=1)
+    obs, info = env.reset(seed=1)
+
+    assert info["action_mask"][BUY_ACTIONS[0]]
+    obs, reward, terminated, truncated, info = env.step(BUY_ACTIONS[0])
+    assert not (terminated or truncated)
+    assert info["action_mask"][BUY_ACTIONS[0]], "BUY must still be valid right after a BUY (no cooldown)"
+    assert info["action_mask"][SELL_ACTIONS[0]], "SELL must be valid right after a BUY since holdings > 0"
+
+
+def test_idle_streak_triggers_cash_penalty():
+    df = _make_df()
+    env = QcomTradingEnv(df, episode_length=None, seed=7)
+    obs, info = env.reset(seed=7)
+
+    cash_before = env.cash
+    terminated = truncated = False
+    for i in range(env.transaction_session):
+        obs, reward, terminated, truncated, info = env.step(HOLD)
+        if terminated or truncated:
+            break
+
+    if not (terminated or truncated):
+        assert abs(env.cash - (cash_before - env.transaction_penalty)) < 1e-6
+        assert env.steps_since_last_trade == 0
+
+
+def test_greedy_agent_never_selects_masked_action():
+    df = _make_df()
+    env = QcomTradingEnv(df, episode_length=None, seed=3)
+    obs, info = env.reset(seed=3)
+
+    agent = A2CAgent(obs_dim=env.observation_space.shape[0], n_actions=11, seed=3)
+
+    done = False
+    steps = 0
+    while not done and steps < 200:
+        mask = info["action_mask"]
+        assert mask[0], "HOLD must always be a valid action"
+        action = agent.select_action(obs, mask, greedy=True)
+        assert mask[action], "Selected action must be valid under the mask"
+
+        obs, reward, terminated, truncated, info = env.step(action)
+        done = terminated or truncated
+        steps += 1
+
+
 if __name__ == "__main__":
-    test_random_actions_respect_cooldown()
-    test_greedy_agent_respects_cooldown()
     test_action_mask_blocks_buy_without_cash_and_sell_without_holdings()
+    test_no_cooldown_restriction_on_consecutive_trades()
+    test_idle_streak_triggers_cash_penalty()
+    test_greedy_agent_never_selects_masked_action()
     print("All action masking tests passed.")

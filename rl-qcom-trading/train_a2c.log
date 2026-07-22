@@ -1,0 +1,71 @@
+Train-core: 1956 rows, Validation: 131 rows
+Using device: cuda
+[upd 100] step 3200: new best val total_assets=106869.58 -> saved outputs/checkpoints\a2c_best.pt
+[upd 100/6250] step 3200 ep=26 entropy=2.193 rolling_best=74301.48
+[upd 200] step 6400: new best val total_assets=116606.66 -> saved outputs/checkpoints\a2c_best.pt
+[upd 200/6250] step 6400 ep=52 entropy=1.588 rolling_best=109321.62
+[upd 300/6250] step 9600 ep=79 entropy=1.387 rolling_best=145914.91
+[upd 400/6250] step 12800 ep=105 entropy=1.175 rolling_best=145914.91
+[upd 500/6250] step 16000 ep=132 entropy=1.514 rolling_best=167541.61
+[upd 600] step 19200: new best val total_assets=126680.68 -> saved outputs/checkpoints\a2c_best.pt
+[upd 600/6250] step 19200 ep=158 entropy=1.360 rolling_best=167541.61
+[upd 700/6250] step 22400 ep=185 entropy=1.500 rolling_best=167541.61
+[upd 800/6250] step 25600 ep=211 entropy=1.219 rolling_best=167541.61
+[upd 900/6250] step 28800 ep=238 entropy=1.027 rolling_best=167541.61
+[upd 1000] step 32000: new best val total_assets=127421.83 -> saved outputs/checkpoints\a2c_best.pt
+[upd 1000/6250] step 32000 ep=264 entropy=1.075 rolling_best=167541.61
+[upd 1100] step 35200: new best val total_assets=127446.09 -> saved outputs/checkpoints\a2c_best.pt
+[upd 1100/6250] step 35200 ep=290 entropy=0.951 rolling_best=171296.97
+[upd 1200/6250] step 38400 ep=317 entropy=0.567 rolling_best=179574.26
+[upd 1300/6250] step 41600 ep=343 entropy=0.259 rolling_best=179574.26
+[upd 1400/6250] step 44800 ep=370 entropy=0.204 rolling_best=190989.03
+[upd 1500/6250] step 48000 ep=396 entropy=1.171 rolling_best=190989.03
+[upd 1600/6250] step 51200 ep=423 entropy=0.948 rolling_best=190989.03
+[upd 1700/6250] step 54400 ep=449 entropy=1.160 rolling_best=190989.03
+[upd 1800/6250] step 57600 ep=476 entropy=1.014 rolling_best=190989.03
+[upd 1900] step 60800: new best val total_assets=128176.24 -> saved outputs/checkpoints\a2c_best.pt
+[upd 1900/6250] step 60800 ep=502 entropy=1.349 rolling_best=190989.03
+[upd 2000/6250] step 64000 ep=528 entropy=0.870 rolling_best=190989.03
+[upd 2100/6250] step 67200 ep=555 entropy=0.403 rolling_best=190989.03
+[upd 2200/6250] step 70400 ep=581 entropy=1.125 rolling_best=190989.03
+[upd 2300/6250] step 73600 ep=608 entropy=0.707 rolling_best=190989.03
+[upd 2400/6250] step 76800 ep=634 entropy=1.000 rolling_best=190989.03
+[upd 2500/6250] step 80000 ep=661 entropy=0.814 rolling_best=190989.03
+[upd 2600/6250] step 83200 ep=687 entropy=0.696 rolling_best=190989.03
+[upd 2700/6250] step 86400 ep=714 entropy=1.112 rolling_best=190989.03
+[upd 2800/6250] step 89600 ep=740 entropy=1.271 rolling_best=190989.03
+[upd 2900/6250] step 92800 ep=766 entropy=1.188 rolling_best=190989.03
+[upd 3000/6250] step 96000 ep=793 entropy=1.287 rolling_best=190989.03
+[upd 3100/6250] step 99200 ep=819 entropy=1.193 rolling_best=190989.03
+[upd 3200/6250] step 102400 ep=846 entropy=1.224 rolling_best=190989.03
+[upd 3300/6250] step 105600 ep=872 entropy=1.152 rolling_best=190989.03
+[upd 3400/6250] step 108800 ep=899 entropy=0.919 rolling_best=190989.03
+[upd 3500/6250] step 112000 ep=925 entropy=0.505 rolling_best=190989.03
+[upd 3600/6250] step 115200 ep=952 entropy=0.735 rolling_best=190989.03
+[upd 3700/6250] step 118400 ep=978 entropy=0.932 rolling_best=190989.03
+[upd 3800/6250] step 121600 ep=1005 entropy=0.766 rolling_best=190989.03
+[upd 3900/6250] step 124800 ep=1031 entropy=0.634 rolling_best=190989.03
+[upd 4000/6250] step 128000 ep=1057 entropy=0.453 rolling_best=190989.03
+[upd 4100/6250] step 131200 ep=1084 entropy=1.117 rolling_best=190989.03
+[upd 4200/6250] step 134400 ep=1110 entropy=1.007 rolling_best=190989.03
+[upd 4300/6250] step 137600 ep=1137 entropy=0.940 rolling_best=190989.03
+[upd 4400/6250] step 140800 ep=1163 entropy=0.600 rolling_best=190989.03
+[upd 4500/6250] step 144000 ep=1190 entropy=0.492 rolling_best=190989.03
+[upd 4600/6250] step 147200 ep=1216 entropy=0.527 rolling_best=190989.03
+[upd 4700/6250] step 150400 ep=1243 entropy=0.515 rolling_best=190989.03
+[upd 4800/6250] step 153600 ep=1269 entropy=0.477 rolling_best=190989.03
+[upd 4900/6250] step 156800 ep=1295 entropy=0.676 rolling_best=190989.03
+[upd 5000/6250] step 160000 ep=1322 entropy=0.576 rolling_best=190989.03
+[upd 5100/6250] step 163200 ep=1348 entropy=0.614 rolling_best=190989.03
+[upd 5200/6250] step 166400 ep=1375 entropy=0.624 rolling_best=190989.03
+[upd 5300/6250] step 169600 ep=1401 entropy=0.787 rolling_best=190989.03
+[upd 5400/6250] step 172800 ep=1428 entropy=0.440 rolling_best=190989.03
+[upd 5500/6250] step 176000 ep=1454 entropy=0.303 rolling_best=190989.03
+[upd 5600/6250] step 179200 ep=1481 entropy=0.364 rolling_best=190989.03
+[upd 5700/6250] step 182400 ep=1507 entropy=0.834 rolling_best=190989.03
+[upd 5800/6250] step 185600 ep=1533 entropy=0.434 rolling_best=190989.03
+[upd 5900/6250] step 188800 ep=1560 entropy=0.458 rolling_best=190989.03
+[upd 6000/6250] step 192000 ep=1586 entropy=0.313 rolling_best=190990.56
+[upd 6100/6250] step 195200 ep=1613 entropy=0.258 rolling_best=190990.56
+[upd 6200/6250] step 198400 ep=1639 entropy=0.331 rolling_best=190990.56
+Saved final checkpoint to outputs/checkpoints\a2c_final.pt

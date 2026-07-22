@@ -1,20 +1,13 @@
-"""Evaluate a trained checkpoint with a greedy (epsilon=0, masked) rollout.
-
-Usage:
-    python evaluate.py --checkpoint outputs/checkpoints/best.pt --split train
-    python evaluate.py --checkpoint outputs/checkpoints/best.pt --split test
-"""
 from __future__ import annotations
 
 import argparse
 import os
 
-import numpy as np
 import pandas as pd
 import torch
 import yaml
 
-from agent.dqn_agent import DQNAgent
+from agent.a2c_agent import A2CAgent
 from env.trading_env import QcomTradingEnv, N_ACTIONS, BUY_ACTIONS, SELL_ACTIONS
 
 ACTION_NAMES = {0: "HOLD"}
@@ -34,12 +27,10 @@ def make_env(df: pd.DataFrame, env_cfg: dict) -> QcomTradingEnv:
         transaction_fee=env_cfg["transaction_fee"],
         transaction_session=env_cfg["transaction_session"],
         transaction_penalty=env_cfg["transaction_penalty"],
-        bankruptcy_frac=env_cfg["bankruptcy_frac"],
+        total_assets_threshold=env_cfg["total_assets_threshold"],
+        cash_floor=env_cfg["cash_floor"],
+        win_target=env_cfg["win_target"],
         price_mode=env_cfg["price_mode"],
-        use_soft_cooldown_penalty=env_cfg["use_soft_cooldown_penalty"],
-        idle_penalty_enabled=env_cfg["idle_penalty_enabled"],
-        idle_penalty_value=env_cfg["idle_penalty_value"],
-        idle_penalty_multiplier=env_cfg["idle_penalty_multiplier"],
         episode_length=None,
         random_start=False,
         seed=0,
@@ -60,15 +51,13 @@ def buy_and_hold_baseline(df: pd.DataFrame, total_assets_initial: float, transac
     return final_value
 
 
-def run_rollout(agent: DQNAgent, df: pd.DataFrame, env_cfg: dict):
+def run_rollout(agent: A2CAgent, df: pd.DataFrame, env_cfg: dict):
     env = make_env(df, env_cfg)
     obs, info = env.reset()
 
     records = []
     cumulative_reward = 0.0
     done = False
-
-    prev_cash, prev_holdings = env.cash, env.holdings
 
     while not done:
         mask = info["action_mask"]
@@ -116,16 +105,16 @@ def run_rollout(agent: DQNAgent, df: pd.DataFrame, env_cfg: dict):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--checkpoint", type=str, default="outputs/checkpoints/best.pt")
+    parser.add_argument("--checkpoint", type=str, default="outputs/checkpoints/a2c_best.pt")
     parser.add_argument("--config", type=str, default="configs/config.yaml")
     parser.add_argument("--split", type=str, choices=["train", "test"], required=True)
     args = parser.parse_args()
 
-    with open(args.config, "r") as f:
+    with open(args.config, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
     env_cfg = cfg["env"]
-    agent_cfg = cfg["agent"]
+    a2c_cfg = cfg["a2c"]
     train_cfg = cfg["train"]
 
     csv_path = cfg["data"]["train_csv"] if args.split == "train" else cfg["data"]["test_csv"]
@@ -134,16 +123,11 @@ def main():
     device = resolve_device(train_cfg["device"])
 
     dummy_env = make_env(df, env_cfg)
-    agent = DQNAgent(
+    agent = A2CAgent(
         obs_dim=dummy_env.observation_space.shape[0],
         n_actions=N_ACTIONS,
-        hidden_sizes=agent_cfg["hidden_sizes"],
-        gamma=agent_cfg["gamma"],
-        lr=agent_cfg["lr"],
-        buffer_size=1000,
-        batch_size=agent_cfg["batch_size"],
-        target_update_freq=agent_cfg["target_update_freq"],
-        tau=agent_cfg["tau"],
+        hidden_sizes=a2c_cfg["hidden_sizes"],
+        gamma=a2c_cfg["gamma"],
         device=device,
         seed=0,
     )

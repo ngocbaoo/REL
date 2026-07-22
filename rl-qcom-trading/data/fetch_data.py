@@ -1,11 +1,3 @@
-"""
-Fetch QCOM daily OHLCV history and split it chronologically into
-train (oldest 8 years of the last 10) and test (most recent 2 years) sets.
-
-Usage:
-    python data/fetch_data.py
-    python data/fetch_data.py --csv path/to/manual_export.csv   # skip yfinance
-"""
 import argparse
 import os
 import sys
@@ -42,10 +34,6 @@ def fetch_via_yfinance(ticker: str = TICKER, years: int = TOTAL_YEARS) -> pd.Dat
 
 
 def load_manual_csv(path: str) -> pd.DataFrame:
-    """Load a manually-downloaded CSV (e.g. stockscan.io export).
-
-    Expects columns that can be mapped to Date, Open, High, Low, Close, Volume.
-    """
     df = pd.read_csv(path)
     df.columns = [c.strip() for c in df.columns]
     rename_map = {}
@@ -94,7 +82,7 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
     df = df.dropna(subset=["Open", "High", "Low", "Close", "Volume"])
     df = df.reset_index()
 
-    # keep only business days (5-day week) after forward-filling calendar gaps
+
     df = df[df["Date"].dt.dayofweek < 5].reset_index(drop=True)
     return df
 
